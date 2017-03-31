@@ -74,7 +74,6 @@ def get_line_stops ():
         with open ('{0}/{1}.json'.format (data_dir, line), 'w') as f:
             f.write (line_json.read ())
 
-
 def get_dwelltimes (line, start_time, end_time):
     curr_dir = os.path.dirname (os.path.realpath (__file__))
     lines_dir = '{0}/data/lines'.format (os.path.dirname (curr_dir))
