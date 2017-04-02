@@ -2,11 +2,13 @@
 
 from __future__ import print_function
 
+import sys
 import time
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from datetime import datetime
 from pytz import timezone
-from utils import get_mbta_tweets_api, get_mbta_tweets_scrape
+from mbta_performance.utils import get_mbta_tweets_api, get_mbta_tweets_scrape
 
 if __name__ == '__main__':
     # get_mbta_tweets_api ()

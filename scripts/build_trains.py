@@ -3,6 +3,9 @@
 from __future__ import print_function
 
 import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import json
 import urllib2
 import matplotlib.pyplot as plt
@@ -11,12 +14,11 @@ from datetime import datetime
 from pytz import timezone
 from glob import glob
 
-import cache
-import line
-import train
-
-from utils import ensure_dir, get_line_stops, line_names, ashmont_branch_stations, \
-    braintree_branch_stations
+from mbta_performance import cache
+from mbta_performance import line
+from mbta_performance import train
+from mbta_performance.utils import ensure_dir, get_line_stops, line_names, \
+    ashmont_branch_stations, braintree_branch_stations
 
 if __name__ == '__main__':
     curr_dir = os.path.dirname (os.path.realpath (__file__))
