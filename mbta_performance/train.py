@@ -29,18 +29,18 @@ def get_first_train_stop (dwell_times):
             times ordered with earliest first.
 
     Returns:
-        str: Key of the earliest train.
+        str: Key of the earliest train. None returned if no data remains.
     """
 
-    start_stop_num = ""
-    start_stop_time = int (get_epoch_time (
-        timezone ('UTC').localize (
-            datetime (year=9999, month=1, day=1))))
+    start_stop_num = None
+    start_stop_time = int (get_epoch_time (timezone ('UTC').localize (datetime (
+        year=9999, month=1, day=1))))
     for (key, dt_deque) in dwell_times.iteritems ():
         if dt_deque and int (dt_deque[0]['dep_dt']) < start_stop_time:
             start_stop_time = int (dt_deque[0]['dep_dt'])
             start_stop_num = key
     # print (start_stop_num, start_stop_time)
+
     return start_stop_num
 
 def get_next_train (train, travel_times, dwell_times):
@@ -62,7 +62,8 @@ def get_next_train (train, travel_times, dwell_times):
 
     start_stop_num = get_first_train_stop (dwell_times)
 
-    if not start_stop_num:
+    # If no data left, return None
+    if start_stop_num is None:
         return None
 
     start_dwell = dwell_times[start_stop_num].popleft ()
@@ -614,11 +615,12 @@ class TrainCollection (object):
                 train = copy.deepcopy (self._base_train)
                 train = get_next_train (train, travel_times, dwell_times)
 
+                # If no data left, break from loop
+                if train is None:
+                    break
+
                 try:
-                    if not train.tracks:
-                        # print ("Empty train ...")
-                        continue
-                    elif "Red" in train.name and \
+                    if "Red" in train.name and \
                             ("Andrew" in train.start.stop_name or
                             "Andrew" in train.end.stop_name):
                         # print ("Red train from wrong branch. Skipping ...")
@@ -634,12 +636,9 @@ class TrainCollection (object):
                 except:
                     pass
 
-                if train is not None:
-                    found_t = self._find_same_train (train)
-                    if found_t is None:
-                        self._trains.append (train)
-                else:
-                    break
+                found_t = self._find_same_train (train)
+                if found_t is None:
+                    self._trains.append (train)
 
         else:
             count = 0
@@ -647,11 +646,12 @@ class TrainCollection (object):
                 train = copy.deepcopy (self._base_train)
                 train = get_next_train (train, travel_times, dwell_times)
 
+                # If no data left, break from loop early
+                if train is None:
+                    break
+
                 try:
-                    if not train.tracks:
-                        # print ("Empty train ...")
-                        continue
-                    elif "Red" in train.name and \
+                    if "Red" in train.name and \
                             ("Andrew" in train.start.stop_name or
                             "Andrew" in train.end.stop_name):
                         # print ("Red train from wrong branch. Skipping ...")
@@ -667,12 +667,9 @@ class TrainCollection (object):
                 except:
                     pass
 
-                if train is not None:
-                    found_t = self._find_same_train (train)
-                    if found_t is None:
-                        self._trains.append (train)
-                else:
-                    break
+                found_t = self._find_same_train (train)
+                if found_t is None:
+                    self._trains.append (train)
 
             # print (self.trains)
 
@@ -732,6 +729,7 @@ class TrainCollection (object):
                     else:
                         continue
 
+                # Missing portion of train data limited to < 4 stops
                 if station_num_diff <= 0:
                     continue
                 elif station_num_diff > 4:
@@ -739,6 +737,10 @@ class TrainCollection (object):
 
                 time_diff = (train.start.departure_time - t.end.departure_time).total_seconds ()
 
+                # Averageg time per train leg must be > 30 sec and < 3 minutes.
+                # Otherwise, unlikely to be the same train. If the train is too
+                # far in the past, we have not found a candidate train, so
+                # return None
                 if time_diff / station_num_diff >= 30. and time_diff / station_num_diff < 180.:
                     t = self._merge_trains (t, train)
                     # t._end = train.end
