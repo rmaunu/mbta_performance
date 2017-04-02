@@ -50,8 +50,14 @@ def get_eastern_time_dt (utc):
     return (dt)
 
 def ensure_dir (path):
-    if not os.path.exists (path):
-        os.mkdir (path)
+    """Make sure ``path`` exists and is a directory."""
+
+    if not os.path.isdir (path):
+        try:
+            os.makedirs (path)   # throws if exists as file
+        except OSError as e:
+            if e.errno != os.errno.EEXIST:
+                raise
     return path
 
 def pairwise(it):

@@ -19,10 +19,9 @@ class Stop (object):
     This is a class to contain T-stop information taken from MBTA API.
     """
 
-    def __init__ (self, direction, stop_dict=None, existing_stop=None):
+    def __init__ (self, stop_dict=None, existing_stop=None):
         """
         Args:
-            direction (str): ID of the stop direction
             stop_dict (dict, optional): dict containing stop information. Keys
                 include: 'stop_name', 'parent_station_name', 'stop_id',
                 'stop_order', 'stop_lon', 'stop_lat'
@@ -30,12 +29,11 @@ class Stop (object):
                 information to this `Stop`.
         """
 
-        self._direction = direction
         self._next_track = None
         self._prev_track = None
-        if not existing_stop is None:
+        if existing_stop is not None:
             self.load_existing (existing_stop)
-        elif not stop_dict is None:
+        elif stop_dict is not None:
             self.load_dict (stop_dict)
 
     def load_dict (self, stop_dict):
@@ -113,16 +111,6 @@ class Stop (object):
         return (self._lon, self._lat)
 
     @property
-    def direction (self):
-        """ `Stop` direction ID.
-
-        Returns:
-            str: direction ID
-        """
-
-        return self._direction
-
-    @property
     def station_name (self):
         """ `Stop` station name.
 
@@ -168,9 +156,9 @@ class Track (object):
                 information to this `Track`.
         """
 
-        if not stop_pair is None:
+        if stop_pair is not None:
             self.load_pair (stop_pair)
-        elif not existing_track is None:
+        elif existing_track is not None:
             self.load_existing (existing_track)
 
     def load_pair (self, stop_pair):
@@ -235,7 +223,7 @@ class Line (object):
     direction, taken from MBTA API.
     """
 
-    def __init__ (self, name, existing_line=None):
+    def __init__ (self, existing_line=None):
         """
         Args:
             name (str): name of the line
@@ -243,11 +231,11 @@ class Line (object):
                 information to this `Line`.
         """
 
-        self._name = name
-        if not existing_line is None:
+        if existing_line is not None:
             self.load_existing (existing_line)
         else:
-            self._direction_id = "0"
+            self._name = None
+            self._direction_id = None
             self._direction_name = None
             self._stops = None
             self._tracks = None
@@ -255,7 +243,7 @@ class Line (object):
             self._end = None
             self._current = None
 
-    def load_existing (existing_line):
+    def load_existing (self, existing_line):
         """ Function to copy existing `Line` information to object.
 
         Args:
@@ -263,6 +251,7 @@ class Line (object):
                 this `Line`.
         """
 
+        self._name = existing_line.name
         self._direction_id = existing_line.direction_id
         self._direction_name = existing_line.direction_name
         self._stops = existing_line.stops
@@ -271,7 +260,7 @@ class Line (object):
         self._end = existing_line.end
         self._current = existing_line._current
 
-    def load (self, path, direction_id="0"):
+    def load (self, path, name, direction_id="0"):
         """ Function to load MBTA route JSON to `Line`.
 
         Args:
@@ -279,6 +268,8 @@ class Line (object):
                 assumed to be <`Line.name`>.json)
             direction_id (str, optional): direction ID of the desired `Line`
         """
+
+        self._name = name
 
         filepath = '{0}/{1}.json'.format (path, self.name)
         with open (filepath) as f:
@@ -301,7 +292,7 @@ class Line (object):
             self._direction_name = line['direction_name']
             self._stops = []
             for stop_dict in line['stop']:
-                stop = Stop (self.direction_name, stop_dict)
+                stop = Stop (stop_dict)
                 self._stops.append (stop)
 
             self._start = self._stops[0]
@@ -343,10 +334,11 @@ class Line (object):
         """
 
         for track in self.tracks:
-            appender = 'prev_stop={0}&next_stop={1}&from_datetime={2}&to_datetime={3}'.format (
+            appender = 'from_stop={0}&to_stop={1}&from_datetime={2}&to_datetime={3}'.format (
                 track.prev_stop.stop_id, track.next_stop.stop_id,
                 get_epoch_time (start_time), get_epoch_time (end_time))
             url = mbta_traveltime_url + appender
+
             tt_json = urllib2.urlopen (url)
 
             out_file = '{0}/{1}_{2}_{3}_{4}_{5}_{6}.json'.format (
@@ -388,6 +380,38 @@ class Line (object):
 
             with open (out_file, 'w') as f:
                 f.write (dt_json.read ())
+
+    def __getitem__ (self, key):
+        """ Get selection of `Stop`s and `Track`s
+
+        Args:
+            key (int or slice): indices of stops to select.
+
+        Returns:
+            `Line`: train with selection of stops and tracks
+        """
+
+        stops = self.stops[key]
+        stops[0]._prev_track = None
+        stops[-1]._next_track = None
+
+        if type (key) is slice:
+            try:
+                t_key = slice (key.start, key.stop-1)
+            except:
+                # For the case where the second index is None
+                t_key = slice (key.start, key.stop)
+            tracks = self.tracks[t_key]
+        else:
+            tracks = None
+
+        out_l = Line (self)
+        out_l._stops = stops
+        out_l._tracks = tracks
+        out_l._start = out_l._stops[0]
+        out_l._current = out_l._start
+        out_l._end = out_l._stops[-1]
+        return out_l
 
     def __iter__ (self):
         self._current = self.start

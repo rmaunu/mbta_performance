@@ -82,7 +82,7 @@ def get_next_train (train, travel_times, dwell_times):
     train._start = starting_stop
     prev_piece = starting_stop
     next_piece = next (starting_stop)
-    while not next_piece is None:
+    while next_piece is not None:
         found_it = False
         if type (next_piece) is TrainTrack:
             dep_t = prev_piece.departure_time
@@ -91,7 +91,7 @@ def get_next_train (train, travel_times, dwell_times):
                 (next_piece.prev_stop.stop_id, next_piece.next_stop.stop_id)]
 
             for tt in tt_deque:
-                if abs ((get_eastern_time_dt (tt['dep_dt']) - dep_t).seconds) < 10:
+                if abs ((get_eastern_time_dt (tt['dep_dt']) - dep_t).total_seconds ()) < 10:
                     # print ("Found it!")
                     # print (tt)
                     found_it = True
@@ -107,7 +107,7 @@ def get_next_train (train, travel_times, dwell_times):
             dt_deque = dwell_times[next_piece.stop_id]
 
             for dt in dt_deque:
-                if abs ((get_eastern_time_dt (dt['arr_dt']) - prev_arr_t).seconds) < 10:
+                if abs ((get_eastern_time_dt (dt['arr_dt']) - prev_arr_t).total_seconds ()) < 10:
                     # print ("Found it!")
                     # print (dt)
                     found_it = True
@@ -131,11 +131,9 @@ def get_next_train (train, travel_times, dwell_times):
 class TrainStop (Stop):
     """ This is a class to contain T-stop for a train. """
 
-    def __init__ (self, direction, stop_dict=None, existing_stop=None,
-                  event_dict=None):
+    def __init__ (self, stop_dict=None, existing_stop=None, event_dict=None):
         """
         Args:
-            direction (str): ID of the stop direction
             stop_dict (dict, optional): dict containing stop information. Keys
                 include: 'stop_name', 'parent_station_name', 'stop_id',
                 'stop_order', 'stop_lon', 'stop_lat'
@@ -146,14 +144,14 @@ class TrainStop (Stop):
                 'dwell_time_sec'
         """
 
-        super (self.__class__, self).__init__ (direction, stop_dict=stop_dict,
+        super (self.__class__, self).__init__ (stop_dict=stop_dict,
                                                existing_stop=existing_stop)
 
         self._dwell_time = None
         self._arrival_time = None
         self._departure_time = None
 
-        if not event_dict is None:
+        if event_dict is not None:
             self.load_event (event_dict)
 
     def load_event (self, event_dict):
@@ -230,7 +228,7 @@ class TrainTrack (Track):
         self._departure_time = None
         self._arrival_time = None
 
-        if not event_dict is None:
+        if event_dict is not None:
             self.load_event (event_dict)
 
     def load_event (self, event_dict):
@@ -302,7 +300,7 @@ class Train (Line):
     traverses its line.
     """
 
-    def __init__ (self, name, existing_train=None):
+    def __init__ (self, existing_train=None):
         """
         Args:
             name (str): name of the line
@@ -310,26 +308,27 @@ class Train (Line):
                 information to this `Train`.
         """
 
-        super (self.__class__, self).__init__ (name)
+        super (self.__class__, self).__init__ ()
         self._station_dict = None
-        if not existing_train is None:
+        if existing_train is not None:
             self.load_existing (existing_train)
 
-    def load_existing (existing_train):
-        """ Function to copy existing `Line` information to object.
+    def load_existing (self, existing_train):
+        """ Function to copy existing `Train` information to object.
 
         Args:
-            existing_track (:obj:`Line`): Existing `Line` to copy information to
-                this `Line`.
+            existing_train (:obj:`Train`): Existing `Train` to copy information
+                to this `Train`.
         """
 
-        self._direction_id = existing_line.direction_id
-        self._direction_name = existing_line.direction_name
-        self._stops = existing_line.stops
-        self._tracks = existing_line.tracks
-        self._start = existing_line.start
-        self._end = existing_line.end
-        self._current = existing_line._current
+        self._name = existing_train.name
+        self._direction_id = existing_train.direction_id
+        self._direction_name = existing_train.direction_name
+        self._stops = existing_train.stops
+        self._tracks = existing_train.tracks
+        self._start = existing_train.start
+        self._end = existing_train.end
+        self._current = existing_train._current
 
     def _get_line_stops (self, line_json, direction_id="0"):
         """ Function to load MBTA JSON stops to `TrackStop`s in the `Train`.
@@ -346,7 +345,7 @@ class Train (Line):
             self._direction_name = line['direction_name']
             self._stops = []
             for stop_dict in line['stop']:
-                stop = TrainStop (self.direction_name, stop_dict)
+                stop = TrainStop (stop_dict=stop_dict)
                 self._stops.append (stop)
 
             self._start = self._stops[0]
@@ -389,16 +388,65 @@ class Train (Line):
         for piece in self:
             try:
                 if type (piece) is TrainStop:
-                    y_coords.append ((piece.departure_time - start_time).seconds)
+                    y_coords.append (
+                        (piece.departure_time - start_time).total_seconds () / 60.)
                     x_coords.append (station_ref_dict[piece.station_name])
                 else:
-                    y_coords.append ((piece.arrival_time - start_time).seconds)
+                    y_coords.append (
+                        (piece.arrival_time - start_time).total_seconds () / 60.)
                     x_coords.append (station_ref_dict[piece.next_stop.station_name])
             except:
                 pass
 
         ax.plot (x_coords, y_coords, color='r', alpha=0.1)
         ax.grid (ls='-', color='grey', alpha=0.3)
+
+    def _set_start (self):
+        self._start = self._stops[0]
+        for s in self._stops:
+            if s._arrival_time is not None:
+                self._start = s
+                break
+
+    def _set_end (self):
+        self._end = self._stops[-1]
+        end = None
+        for s in self:
+            if s._arrival_time is not None:
+                end = s
+        self._end = end
+
+    def __getitem__ (self, key):
+        """ Get selection of `TrainStop`s and `TrainTrack`s
+
+        Args:
+            key (int or slice): indices of stops to select.
+
+        Returns:
+            `Train`: train with selection of stops and tracks
+        """
+
+        stops = self.stops[key]
+        stops[0]._prev_track = None
+        stops[-1]._next_track = None
+
+        if type (key) is slice:
+            try:
+                t_key = slice (key.start, key.stop-1)
+            except:
+                # For the case where the second index is None
+                t_key = slice (key.start, key.stop)
+            tracks = self.tracks[t_key]
+        else:
+            tracks = None
+
+        out_t = Train (self)
+        out_t._stops = stops
+        out_t._tracks = tracks
+        out_t._set_start ()
+        out_t._current = out_t._start
+        out_t._set_end ()
+        return out_t
 
     @property
     def station_dict (self):
@@ -412,26 +460,68 @@ class Train (Line):
             self._station_dict = {}
             for (i, s) in enumerate (self.stops):
                 self._station_dict[s.station_name] = i
+                self._station_dict[i] = s.station_name
         return self._station_dict
 
+    @property
+    def total_travel_time (self):
+        """ End-to-end travel time of the train
+
+        Returns:
+            tuple: total travel time, start station index, and end station index
+        """
+
+        start_station_num = self.station_dict[self.start.station_name]
+
+        try:
+            end_station_num = self.station_dict[self.end.station_name]
+        except:
+            end_station_num = self.station_dict[self.end.next_stop.station_name]
+
+        # Get travel time
+        try:
+            start_time = self.start.departure_time
+            end_time = self.end.arrival_time
+            travel_time = (end_time - start_time).total_seconds ()
+        except:
+            travel_time = None
+
+        return (travel_time, start_station_num, end_station_num)
 
 class TrainCollection (object):
     """ This is a meta-class to extract and hold a collection of `Train`s from
     the same T-line and direction. """
 
-    def __init__ (self, name):
+    def __init__ (self, existing_collection=None):
         """
         Args:
             name (str): name of the line
         """
 
-        self._name = name
-        self._base_train = None
-        self._trains = None
-        self._travel_times = None
-        self._dwell_times = None
+        if existing_collection is None:
+            self._name = None
+            self._base_train = None
+            self._trains = None
+            self._travel_times = None
+            self._dwell_times = None
+        else:
+            self.load_existing (existing_collection)
 
-    def load_base_train (self, path, direction_id="0"):
+    def load_existing (self, existing_collection):
+        """ Function to copy existing `TrainCollection` information to object.
+
+        Args:
+            existing_collection (:obj:`Train`): Existing `TrainCollection` to
+                copy information to this `TrainCollection`.
+        """
+
+        self._name = existing_collection.name
+        self._base_train = existing_collection.base_train
+        self._trains = existing_collection.trains
+        self._travel_times = existing_collection._travel_times
+        self._dwell_times = existing_collection._dwell_times
+
+    def load_base_train (self, path, name, direction_id="0"):
         """ Function to load the base route for the `Train` (see `Train.load`).
 
         Args:
@@ -440,8 +530,9 @@ class TrainCollection (object):
             direction_id (str, optional): direction ID of the desired `Line`
         """
 
-        self._base_train = Train (self.name)
-        self._base_train.load (path, direction_id=direction_id)
+        self._name = name
+        self._base_train = Train ()
+        self._base_train.load (path, self.name, direction_id=direction_id)
 
     def load_travel_times (self, travel_times_files):
         """ Function to load the travel times of the train line.
@@ -543,7 +634,7 @@ class TrainCollection (object):
                 except:
                     pass
 
-                if not train is None:
+                if train is not None:
                     found_t = self._find_same_train (train)
                     if found_t is None:
                         self._trains.append (train)
@@ -576,7 +667,7 @@ class TrainCollection (object):
                 except:
                     pass
 
-                if not train is None:
+                if train is not None:
                     found_t = self._find_same_train (train)
                     if found_t is None:
                         self._trains.append (train)
@@ -634,7 +725,7 @@ class TrainCollection (object):
                         self.base_train.station_dict[train.start.station_name] - \
                         self.base_train.station_dict[t.end.station_name]
                 except:
-                    if not t.end.next_stop is None:
+                    if t.end.next_stop is not None:
                         station_num_diff = \
                             self.base_train.station_dict[train.start.station_name] - \
                             self.base_train.station_dict[t.end.next_stop.station_name]
@@ -643,10 +734,10 @@ class TrainCollection (object):
 
                 if station_num_diff <= 0:
                     continue
-                elif station_num_diff > 2:
+                elif station_num_diff > 4:
                     continue
 
-                time_diff = (train.start.departure_time - t.end.departure_time).seconds
+                time_diff = (train.start.departure_time - t.end.departure_time).total_seconds ()
 
                 if time_diff / station_num_diff >= 30. and time_diff / station_num_diff < 180.:
                     t = self._merge_trains (t, train)
@@ -668,9 +759,17 @@ class TrainCollection (object):
 
         for t in self.trains:
             if station_ref_dict[t.start.station_name] > 0 and \
-                    station_ref_dict[t.start.station_name] < len (station_ref_dict.keys ()) - 1 :
+                    station_ref_dict[t.start.station_name] < (len (t.stops) - 1):
                 continue
             t.plot_train (ax, station_ref_dict)
+
+    def __getitem__ (self, key):
+        out_tc = TrainCollection (self)
+        out_tc._trains = self.trains[key]
+        return out_tc
+
+    def __iter__ (self):
+        return iter (self.trains)
 
     @property
     def name (self):

@@ -26,14 +26,15 @@ if __name__ == '__main__':
     ana_dir = ensure_dir ('{0}/data/ana'.format (os.path.dirname (curr_dir)))
     plot_dir = ensure_dir ('{0}/plots'.format (os.path.dirname (curr_dir)))
 
-    for name in line_names[:1]:
+    for name in line_names:
         fig = plt.figure ()
         ax = fig.add_subplot (111)
+        fig.subplots_adjust(bottom=0.4)
         station_dict = None
 
         for d in ("0", "1"):
-            tc = train.TrainCollection (name)
-            tc.load_base_train (lines_dir, direction_id=d)
+            tc = train.TrainCollection ()
+            tc.load_base_train (lines_dir, name, direction_id=d)
 
             print (tc.name, tc.base_train.direction_name)
             for p in tc.base_train:
@@ -47,16 +48,19 @@ if __name__ == '__main__':
                 dwelltimes_dir, tc.name, d)))
             tc.load_dwell_times (dt_files)
 
-            # tc.load_trains (num_trains=10000)
             tc.load_trains (num_trains=10000)
+            # tc.load_trains (num_trains=1000)
 
             if station_dict is None:
                 station_dict = tc.base_train.station_dict
-            tc.plot_trains (ax, curr_dir, station_dict)
+            tc.plot_trains (ax, station_dict)
             cache.save (tc, '{0}/{1}_{2}.pickle'.format (ana_dir, name, d))
 
+        x_locs = range (len (tc.base_train.stops))
+        x_labs = [station_dict[i] for i in x_locs]
+        ax.set_xticks (x_locs)
+        ax.set_xticklabels (x_labs, rotation=90.)
         ax.set_title (name)
-        ax.set_xlabel ('Station Number')
-        ax.set_ylabel ('Journey Time (s)')
-        fig.savefig ('{0}/{1}_travel_time_test.pdf'.format (plot_dir, name))
+        ax.set_ylabel ('Journey Time (minutes)')
+        fig.savefig ('{0}/{1}_travel_time.pdf'.format (plot_dir, name))
 
