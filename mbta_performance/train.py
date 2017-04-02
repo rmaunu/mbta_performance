@@ -800,13 +800,3 @@ class TrainCollection (object):
         """
 
         return self._trains
-
-if __name__ == '__main__':
-        for route in route_names:
-            print ("Getting", route, "line performace data from",
-                   start_time.strftime("%Y-%m-%d %H:%M:%S %Z%z"), "to",
-                   end_time.strftime("%Y-%m-%d %H:%M:%S %Z%z"))
-            get_traveltimes (route, get_epoch_time (start_time),
-                             get_epoch_time (end_time))
-            get_dwelltimes (route, get_epoch_time (start_time),
-                            get_epoch_time (end_time))
