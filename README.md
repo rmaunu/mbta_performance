@@ -6,5 +6,4 @@ corpora of MBTA tweets can be obtained using `scripts/get_mbta_tweets.py`.
 Finally, to visualize T travel time performance for the data downloaded, see
 `scripts/build_trains.py`.
 
-<img src="data/example_plots/Orange_travel_time.pdf" 
-alt="Orange Line Performance"  width="800" height="600">
+![image](data/example_plots/Orange_travel_time.png)
