@@ -470,6 +470,8 @@ class Train (Line):
         """
 
         stops = copy.deepcopy (self.stops[key])
+        if type (stops) is TrainStop:
+            stops = [stops]
         stops[0]._prev_track = None
         stops[-1]._next_track = None
 
@@ -567,7 +569,8 @@ class TrainCollection (object):
         """ Function to load the base route for the `Train` (see `Train.load`).
 
         Args:
-            path (str): directory path that contains the route JSON (file name
+            path (str): directory path that contains the route JSON
+            name (str): name of the route to load (file name
                 assumed to be <`Line.name`>.json)
             direction_id (str, optional): direction ID of the desired `Line`
         """
@@ -812,7 +815,7 @@ class TrainCollection (object):
             t.plot_train (ax, station_ref_dict)
 
     def __getitem__ (self, key):
-        out_tc = TrainCollection (copy.deepcopy (self))
+        out_tc = TrainCollection (self)
         out_tc._trains = copy.deepcopy (self.trains[key])
         return out_tc
 

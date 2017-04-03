@@ -29,11 +29,18 @@ twitter_search_url = 'https://twitter.com/search?l=&q=%23MBTA%20'
 def get_epoch_time (dt):
     epoch = datetime.utcfromtimestamp(0)
     epoch = timezone('UTC').localize (epoch)
-    return str (int ((dt - epoch).total_seconds ()))
+    try:
+        out_str = str (int ((dt - epoch).total_seconds ()))
+    except:
+        dt = timezone('UTC').localize (dt)
+        out_str = str (int ((dt - epoch).total_seconds ()))
+
+    return out_str
 
 def get_eastern_time_dt (utc):
     dt = datetime.utcfromtimestamp (int (utc))
-    dt = timezone ('US/Eastern').localize (dt)
+    dt = timezone ('UTC').localize (dt)
+    dt.astimezone ('US/Eastern')
     return (dt)
 
 def ensure_dir (path):
