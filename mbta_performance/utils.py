@@ -20,24 +20,11 @@ ashmont_branch_stations = ('Ashmont', 'Shawmut', 'Fields Corner', 'Savin Hill')
 braintree_branch_stations = ('Braintree', 'Quincy Adams', 'Quincy Center',
                              'Wollaston', 'North Quincy')
 
-mbta_stopsbyline_url = \
-    'http://realtime.mbta.com/developer/api/v2/stopsbyline?api_key=wX9NwuHnZU2ToO7GmGR9uw'
 mbta_traveltime_url = \
     'http://realtime.mbta.com/developer/api/v2.1/traveltimes?api_key=wX9NwuHnZU2ToO7GmGR9uw&format=json&'
 mbta_dwelltime_url = \
     'http://realtime.mbta.com/developer/api/v2.1/dwells?api_key=wX9NwuHnZU2ToO7GmGR9uw&format=json&'
 twitter_search_url = 'https://twitter.com/search?l=&q=%23MBTA%20'
-
-def get_twitter_api_keys (filepath):
-    import ConfigParser
-    config = ConfigParser.ConfigParser ()
-    config.read (filepath)
-    consumer_key = config.get ("keys", "CONSUMER_KEY")
-    consumer_secret = config.get ("keys", "CONSUMER_SECRET")
-    access_key = config.get ("keys", "ACCESS_KEY")
-    access_secret = config.get ("keys", "ACCESS_SECRET")
-
-    return consumer_key, consumer_secret, access_key, access_secret
 
 def get_epoch_time (dt):
     epoch = datetime.utcfromtimestamp(0)
@@ -65,46 +52,16 @@ def pairwise(it):
     while True:
         yield next(it), next(it)
 
-def get_line_stops ():
-    for line in line_names:
-        appender = '&line={0}&format=json'.format (line)
-        url = mbta_stopsbyline_url + appender
+def get_twitter_api_keys (filepath):
+    import ConfigParser
+    config = ConfigParser.ConfigParser ()
+    config.read (filepath)
+    consumer_key = config.get ("keys", "CONSUMER_KEY")
+    consumer_secret = config.get ("keys", "CONSUMER_SECRET")
+    access_key = config.get ("keys", "ACCESS_KEY")
+    access_secret = config.get ("keys", "ACCESS_SECRET")
 
-        line_json = urllib2.urlopen (url)
-
-        curr_dir = os.path.dirname (os.path.realpath (__file__))
-        data_dir = ensure_dir ('{0}/data/lines'.format (
-            os.path.dirname (curr_dir)
-        ))
-
-        with open ('{0}/{1}.json'.format (data_dir, line), 'w') as f:
-            f.write (line_json.read ())
-
-def get_dwelltimes (line, start_time, end_time):
-    curr_dir = os.path.dirname (os.path.realpath (__file__))
-    lines_dir = '{0}/data/lines'.format (os.path.dirname (curr_dir))
-    dwelltimes_dir = ensure_dir ('{0}/data/dwelltimes/{1}'.format (
-        os.path.dirname (curr_dir), line))
-
-    with open ('{0}/{1}.json'.format (lines_dir, line)) as f:
-        line_json = json.load (f)
-
-    for direction in line_json['direction']:
-        stops_in_line = []
-
-        for stop in direction['stop']:
-            stops_in_line.append (stop['stop_id'])
-
-        for stop in set (stops_in_line):
-            appender = 'stop={0}&from_datetime={1}&to_datetime={2}'.format (
-                stop, start_time, end_time)
-            url = mbta_dwelltime_url + appender
-
-            dt_json = urllib2.urlopen (url)
-
-            with open ('{0}/{1}_{2}_{3}.json'.format (
-                    dwelltimes_dir, stop, start_time, end_time), 'w') as f:
-                f.write (dt_json.read ())
+    return consumer_key, consumer_secret, access_key, access_secret
 
 def get_mbta_tweets_api (username="MBTA"):
 

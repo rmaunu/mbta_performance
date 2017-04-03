@@ -9,7 +9,7 @@ import copy
 
 import cache
 
-from utils import get_line_stops, line_names, ashmont_branch_stations, \
+from utils import line_names, ashmont_branch_stations, \
     braintree_branch_stations, mbta_traveltime_url, mbta_dwelltime_url, \
     get_epoch_time
 
@@ -60,12 +60,12 @@ class Stop (object):
                 this `Stop`.
         """
 
-        self._next_track = existing_stop.next_track
-        self._prev_track = existing_stop.prev_track
-        self._stop_name = existing_stop.stop_name
-        self._station_name = existing_stop.station_name
-        self._stop_id = existing_stop.stop_id
-        self._stop_order = existing_stop.stop_order
+        self._next_track = copy.deepcopy (existing_stop.next_track)
+        self._prev_track = copy.deepcopy (existing_stop.prev_track)
+        self._stop_name = copy.deepcopy (existing_stop.stop_name)
+        self._station_name = copy.deepcopy (existing_stop.station_name)
+        self._stop_id = copy.deepcopy (existing_stop.stop_id)
+        self._stop_order = copy.deepcopy (existing_stop.stop_order)
         self._lon, self._lat = existing_stop.coord
 
     def __str__ (self):
@@ -180,8 +180,8 @@ class Track (object):
                 this `Track`.
         """
 
-        self._prev_stop = existing_track.prev_stop
-        self._next_stop = existing_track.next_stop
+        self._prev_stop = copy.deepcopy (existing_track.prev_stop)
+        self._next_stop = copy.deepcopy (existing_track.next_stop)
 
     def __str__ (self):
         return ('<Track: ' + self.prev_stop.stop_name + ' ---- ' +
@@ -251,14 +251,14 @@ class Line (object):
                 this `Line`.
         """
 
-        self._name = existing_line.name
-        self._direction_id = existing_line.direction_id
-        self._direction_name = existing_line.direction_name
-        self._stops = existing_line.stops
-        self._tracks = existing_line.tracks
-        self._start = existing_line.start
-        self._end = existing_line.end
-        self._current = existing_line._current
+        self._name = copy.deepcopy (existing_line.name)
+        self._direction_id = copy.deepcopy (existing_line.direction_id)
+        self._direction_name = copy.deepcopy (existing_line.direction_name)
+        self._stops = copy.deepcopy (existing_line.stops)
+        self._tracks = copy.deepcopy (existing_line.tracks)
+        self._start = self._stops[0]
+        self._end = self._stops[-1]
+        self._current = self._start
 
     def load (self, path, name, direction_id="0"):
         """ Function to load MBTA route JSON to `Line`.
@@ -391,7 +391,7 @@ class Line (object):
             `Line`: train with selection of stops and tracks
         """
 
-        stops = self.stops[key]
+        stops = copy.deepcopy (self.stops[key])
         stops[0]._prev_track = None
         stops[-1]._next_track = None
 
@@ -401,7 +401,7 @@ class Line (object):
             except:
                 # For the case where the second index is None
                 t_key = slice (key.start, key.stop)
-            tracks = self.tracks[t_key]
+            tracks = copy.deepcopy (self.tracks[t_key])
         else:
             tracks = None
 

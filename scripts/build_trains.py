@@ -17,7 +17,7 @@ from glob import glob
 from mbta_performance import cache
 from mbta_performance import line
 from mbta_performance import train
-from mbta_performance.utils import ensure_dir, get_line_stops, line_names, \
+from mbta_performance.utils import ensure_dir, line_names, \
     ashmont_branch_stations, braintree_branch_stations
 
 if __name__ == '__main__':
@@ -28,6 +28,8 @@ if __name__ == '__main__':
     ana_dir = ensure_dir ('{0}/data/ana'.format (os.path.dirname (curr_dir)))
     plot_dir = ensure_dir ('{0}/plots'.format (os.path.dirname (curr_dir)))
 
+    # for name in line_names[4:]:
+    # for name in line_names[:1]:
     for name in line_names:
         fig = plt.figure ()
         ax = fig.add_subplot (111)
@@ -60,6 +62,9 @@ if __name__ == '__main__':
 
         x_locs = range (len (tc.base_train.stops))
         x_labs = [station_dict[i] for i in x_locs]
+
+        ax.set_xlim (x_locs[0], x_locs[-1])
+        ax.set_ylim (ymin=0)
         ax.set_xticks (x_locs)
         ax.set_xticklabels (x_labs, rotation=90.)
         ax.set_title (name)
