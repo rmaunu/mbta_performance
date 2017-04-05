@@ -13,12 +13,21 @@ from datetime import datetime, timedelta
 from pytz import timezone
 from itertools import izip
 from bs4 import BeautifulSoup
+from enum import Enum
 
-line_names = ('Red-Ashmont', 'Red-Braintree', 'Orange', 'Blue', 'Green-B',
-              'Green-C', 'Green-D', 'Green-E')
 ashmont_branch_stations = ('Ashmont', 'Shawmut', 'Fields Corner', 'Savin Hill')
 braintree_branch_stations = ('Braintree', 'Quincy Adams', 'Quincy Center',
                              'Wollaston', 'North Quincy')
+
+class lines (Enum):
+    red_ashmont = 'Red-Ashmont'
+    red_braintree = 'Red-Braintree'
+    orange = 'Orange'
+    blue = 'Blue'
+    green_b = 'Green-B'
+    green_c = 'Green-C'
+    green_d = 'Green-D'
+    green_e = 'Green-E'
 
 mbta_traveltime_url = \
     'http://realtime.mbta.com/developer/api/v2.1/traveltimes?api_key=wX9NwuHnZU2ToO7GmGR9uw&format=json&'
@@ -37,11 +46,39 @@ def get_epoch_time (dt):
 
     return out_str
 
-def get_eastern_time_dt (utc):
+def get_eastern_time_utc (utc):
+    """ Function to get Eastern Time `datetime` of a given UTC time stamp.
+
+    Args:
+        utc (int or str): UTC time stamp
+
+    Returns:
+        `datetime`: Eastern Time localized `datetime` of UTC time stamp
+    """
     dt = datetime.utcfromtimestamp (int (utc))
     dt = timezone ('UTC').localize (dt)
-    dt.astimezone ('US/Eastern')
+    dt = dt.astimezone (timezone ('US/Eastern'))
     return (dt)
+
+def localize_eastern_dt (dt):
+    """ Function to localize given datetime to US Eastern Time.
+
+    Args:
+        dt (`datetime`): Input `datetime`
+
+    Returns:
+        `datetime`: Same `datetime` but localized to Eastern Time if the time
+            zone had not been set, or converted to Eastern Time if another time
+            zone was set.
+    """
+
+    if dt.tzinfo is not None and dt.tzinfo.utcoffset(dt) is not None:
+        dt = dt.astimezone (timezone ('US/Eastern'))
+    else:
+        dt = timezone ('US/Eastern').localize (dt)
+
+    return dt
+
 
 def ensure_dir (path):
     """Make sure ``path`` exists and is a directory."""
@@ -54,7 +91,7 @@ def ensure_dir (path):
                 raise
     return path
 
-def pairwise(it):
+def pairwise (it):
     it = iter(it)
     while True:
         yield next(it), next(it)

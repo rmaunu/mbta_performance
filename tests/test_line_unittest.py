@@ -22,7 +22,7 @@ ref_stop2 = {'stop_name': 'next test stop',
              'stop_id': '2', 'stop_order': '1',
              'stop_lon': 100., 'stop_lat': -45.}
 
-class TestStop (unittest.TestCase):
+class TestLine (unittest.TestCase):
 
     def setUp (self):
         pass
@@ -79,13 +79,13 @@ class TestStop (unittest.TestCase):
 
     def testLine (self):
         curr_dir = os.path.dirname (os.path.realpath (__file__))
-        lines_dir = '{0}/data/lines'.format (os.path.dirname (curr_dir))
+        lines_dir = '{0}/test_data/lines'.format (curr_dir)
 
         new_line = line.Line ()
-        new_line.load (lines_dir, "Blue", direction_id="0")
+        new_line.load (lines_dir, line.lines.blue, direction_id="0")
         new_line_copy = line.Line (existing_line=new_line)
         new_line2 = line.Line ()
-        new_line2.load (lines_dir, "Blue", direction_id="1")
+        new_line2.load (lines_dir, line.lines.blue, direction_id="1")
 
         print ("Direction 0 (with copy):")
         for p1, p2 in izip (new_line, new_line_copy):
@@ -109,25 +109,36 @@ class TestStop (unittest.TestCase):
 
     def testGetLineTimes (self):
         curr_dir = os.path.dirname (os.path.realpath (__file__))
-        lines_dir = '{0}/data/lines'.format (os.path.dirname (curr_dir))
+        lines_dir = '{0}/test_data/lines'.format (curr_dir)
 
         new_line = line.Line ()
-        new_line.load (lines_dir, "Blue", direction_id="0")
+        new_line.load (lines_dir, line.lines.blue, direction_id="0")
 
         start_time = datetime (year=2017, month=1, day=10)
-        td = timedelta (days=5)
+        td = timedelta (days=1)
         new_line[:3].get_traveltimes ("./test_data", start_time,
                                       start_time + td, dry=True)
         new_line[:3].get_dwelltimes ("./test_data", start_time,
                                      start_time + td, dry=True)
 
+        try:
+            new_line[:3].get_traveltimes ("./test_data", start_time + td,
+                                        start_time, dry=True)
+        except ValueError:
+            print ("Dates in wrong order caught in `get_traveltimes`")
+
+        try:
+            new_line[:3].get_dwelltimes ("./test_data", start_time + td,
+                                        start_time, dry=True)
+        except ValueError:
+            print ("Dates in wrong order caught in `get_dwelltimes`")
+
         start_time = datetime (year=2017, month=1, day=10)
-        td = timedelta (days=20)
+        td = timedelta (days=20)  # Too many days for single query
         new_line[:3].get_traveltimes ("./test_data", start_time,
                                       start_time + td, dry=True)
         new_line[:3].get_dwelltimes ("./test_data", start_time,
                                      start_time + td, dry=True)
-
 
 if __name__ == '__main__':
     unittest.main ()

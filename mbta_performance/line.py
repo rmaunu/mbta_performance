@@ -9,11 +9,10 @@ import copy
 
 import cache
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
-from utils import line_names, ashmont_branch_stations, \
-    braintree_branch_stations, mbta_traveltime_url, mbta_dwelltime_url, \
-    get_epoch_time
+from utils import lines, ensure_dir, mbta_traveltime_url, mbta_dwelltime_url, \
+    get_epoch_time, localize_eastern_dt
 
 
 class Stop (object):
@@ -29,7 +28,12 @@ class Stop (object):
                 'stop_order', 'stop_lon', 'stop_lat'
             existing_stop (:obj:`Stop`, optional): Existing `Stop` to copy
                 information to this `Stop`.
+
+            Only one of stop_dict and existing_stop may be specified.
         """
+
+        if stop_dict is not None and existing_stop is not None:
+            raise ValueError ("Only one of stop_dict and existing_stop may be specified.")
 
         self._next_track = None
         self._prev_track = None
@@ -172,7 +176,12 @@ class Track (object):
                 :obj:`Stop`s.
             existing_track (:obj:`Track`, optional): Existing `Track` to copy
                 information to this `Track`.
+
+            Only one of stop_pair and existing_track may be provided.
         """
+
+        if stop_pair is not None and existing_track is not None:
+            raise ValueError ("Only one of stop_pair and existing_track may be provided.")
 
         if stop_pair is not None:
             self.load_pair (stop_pair)
@@ -274,23 +283,32 @@ class Line (object):
         self._direction_name = copy.deepcopy (existing_line.direction_name)
         self._stops = copy.deepcopy (existing_line.stops)
         self._tracks = copy.deepcopy (existing_line.tracks)
-        self._start = self._stops[0]
-        self._end = self._stops[-1]
+        if self._stops is None:
+            self._start = None
+            self._end = None
+        else:
+            self._start = self._stops[0]
+            self._end = self._stops[-1]
         self._current = self._start
 
-    def load (self, path, name, direction_id="0"):
+    def load (self, path, line_name, direction_id="0"):
         """ Function to load MBTA route JSON to `Line`.
 
         Args:
             path (str): directory path that contains the route JSON
-            name (str): name of the route to load (file name
-                assumed to be <`Line.name`>.json)
+            line_name (enum): line selected from `lines` enum
             direction_id (str, optional): direction ID of the desired `Line`
         """
 
-        self._name = name
+        if direction_id != "0" and direction_id != "1":
+            raise ValueError ("The supplied direction_id is not valid. This value must be \"0\" or \"1\" ...")
+
+        self._name = line_name.value
 
         filepath = '{0}/{1}.json'.format (path, self.name)
+        if not os.path.exists (filepath):
+            raise ValueError ("Line file not found. Check path provide ...")
+
         with open (filepath) as f:
             line_json = json.load (f)
             self._get_line_stops (line_json, direction_id=direction_id)
@@ -343,36 +361,52 @@ class Line (object):
 
         Args:
             path (str): directory to save travel times to
-            start_time (datetime): start time of travel times
-            end_time (datetime): end time of travel times
+            start_time (datetime): start time of travel times (given in US Eastern Time)
+            end_time (datetime): end time of travel times (given in US Eastern Time)
             dry (bool, optional): if True, do not write out data to path
 
         Returns:
-            Files of MBTA JSON travel times for each `Track` in the `Line`. File
-            name of the form:
-                <`Line.name`>_<`Line.direction_id`>_<First Stop ID>_<Second Stop ID>_<Start Time>_<End Time>.json
+            Files of MBTA JSON travel times for each `Track` in the `Line`. Files
+            will be output to a subdirectory with name "<`Line.name`>/", and
+            files will have names of the form:
+                traveltimes_<`Line.name`>_<`Line.direction_id`>_<First Stop ID>_<Second Stop ID>_<Start Time>_<End Time>.json
             The MBTA API limits queries to 7 day windows, so multiple files may
             be output per-track.
         """
+
+        if type (start_time) is not datetime:
+            raise TypeError ("Input time must be a `datetime` ...")
+        else:
+            start_time = localize_eastern_dt (start_time)
+
+        if type (end_time) is not datetime:
+            raise TypeError ("Input time must be a `datetime` ...")
+        else:
+            end_time = localize_eastern_dt (end_time)
+
+        if start_time > end_time:
+            raise ValueError ("Start time must be before end time ...")
 
         seven_days = timedelta (days=7)
         start_time_temp = start_time
         end_time_temp = min (end_time, start_time_temp + seven_days)
 
+        out_dir = '{0}/{1}'.format (path, self.name)
         if not dry:
-            path = ensure_dir (path)
+            out_dir = ensure_dir (out_dir)
 
         while start_time_temp < end_time:
             for track in self.tracks:
                 appender = 'from_stop={0}&to_stop={1}&from_datetime={2}&to_datetime={3}'.format (
                     track.prev_stop.stop_id, track.next_stop.stop_id,
-                    get_epoch_time (start_time), get_epoch_time (end_time))
+                    get_epoch_time (start_time_temp), get_epoch_time (end_time_temp))
                 url = mbta_traveltime_url + appender
+                # print (url)
 
                 tt_json = urllib2.urlopen (url)
 
-                out_file = '{0}/{1}_{2}_{3}_{4}_{5}_{6}.json'.format (
-                    path, self.name, self.direction_id,
+                out_file = '{0}/traveltimes_{1}_{2}_{3}_{4}_{5}_{6}.json'.format (
+                    out_dir, self.name, self.direction_id,
                     track.prev_stop.stop_id, track.next_stop.stop_id,
                     get_epoch_time (start_time),
                     get_epoch_time (end_time))
@@ -393,36 +427,52 @@ class Line (object):
 
         Args:
             path (str): directory to save dwell times to
-            start_time (datetime): start time of travel times
-            end_time (datetime): end time of travel times
+            start_time (datetime): start time of travel times (given in US Eastern Time)
+            end_time (datetime): end time of travel times (given in US Eastern Time)
             dry (bool, optional): if True, do not write out data to path
 
         Returns:
-            Files of MBTA JSON dwell times for each `Stop` in the `Line`. File
-            name of the form:
-                <`Line.name`>_<`Line.direction_id`>_<Stop ID>_<Start Time>_<End Time>.json
+            Files of MBTA JSON dwell times for each `Track` in the `Line`. Files
+            will be output to a subdirectory with name "<`Line.name`>/", and
+            files will have names of the form:
+                dwelltimes_<`Line.name`>_<`Line.direction_id`>_<Stop ID>_<Start Time>_<End Time>.json
             The MBTA API limits queries to 7 day windows, so multiple files may
-            be output per stop.
+            be output per-stop.
         """
+
+        if type (start_time) is not datetime:
+            raise TypeError ("Input time must be a `datetime` ...")
+        else:
+            start_time = localize_eastern_dt (start_time)
+
+        if type (end_time) is not datetime:
+            raise TypeError ("Input time must be a `datetime` ...")
+        else:
+            end_time = localize_eastern_dt (end_time)
+
+        if start_time > end_time:
+            raise ValueError ("Start time must be before end time ...")
 
         seven_days = timedelta (days=7)
         start_time_temp = start_time
         end_time_temp = min (end_time, start_time_temp + seven_days)
 
+        out_dir = '{0}/{1}'.format (path, self.name)
         if not dry:
-            path = ensure_dir (path)
+            out_dir = ensure_dir (out_dir)
 
         while start_time_temp < end_time:
             for stop in self.stops:
                 appender = 'stop={0}&from_datetime={1}&to_datetime={2}'.format (
-                    stop.stop_id, get_epoch_time (start_time),
-                    get_epoch_time (end_time))
+                    stop.stop_id, get_epoch_time (start_time_temp),
+                    get_epoch_time (end_time_temp))
                 url = mbta_dwelltime_url + appender
+                # print (url)
 
                 dt_json = urllib2.urlopen (url)
 
-                out_file = '{0}/{1}_{2}_{3}_{4}_{5}.json'.format (
-                    path, self.name, self.direction_id,
+                out_file = '{0}/dwelltimes_{1}_{2}_{3}_{4}_{5}.json'.format (
+                    out_dir, self.name, self.direction_id,
                     stop.stop_id, get_epoch_time (start_time),
                     get_epoch_time (end_time))
 
@@ -445,6 +495,9 @@ class Line (object):
             `Line`: train with selection of stops and tracks
         """
 
+        if self.stops is None:
+            raise ValueError ("The line's stops have not been set. Please use `Line.load` ...")
+
         stops = copy.deepcopy (self.stops[key])
         if type (stops) is Stop:
             stops = [stops]
@@ -465,8 +518,8 @@ class Line (object):
         out_l._stops = stops
         out_l._tracks = tracks
         out_l._start = out_l._stops[0]
-        out_l._current = out_l._start
         out_l._end = out_l._stops[-1]
+        out_l._current = out_l._start
         return out_l
 
     def __iter__ (self):

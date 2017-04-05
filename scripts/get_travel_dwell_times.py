@@ -48,7 +48,6 @@ if __name__ == '__main__':
                            "from", start_time.strftime("%Y-%m-%d %H:%M:%S %Z%z"),
                            "to", end_time.strftime("%Y-%m-%d %H:%M:%S %Z%z"), "...")
                     tc.get_traveltimes (traveltimes_dir, start_time, end_time)
-
                     print ("Getting dwell times for", tc.base_train.name,
                            tc.base_train.direction_name,
                            "from", start_time.strftime("%Y-%m-%d %H:%M:%S %Z%z"),
