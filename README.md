@@ -77,6 +77,12 @@ To visualize the performance of an ensemble of trains, please see
 
 ![image](data/example_plots/Orange_travel_time.png)
 
+Finally, and "average" train for the ensemble is accessible with
+`tc.median_train`. This train contains the median travel times and dwell times
+in each leg of the train's journey through the line.
+`tc.median_train.total_travel_time` can then give a baseline estimate of the
+total travel time through the system for further analysis.
+
 ## Examples 
 
 For example analysis scripts, please see `scripts/get_travel_dwell_times.py` (an

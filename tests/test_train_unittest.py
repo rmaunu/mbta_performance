@@ -68,8 +68,8 @@ class TestTrain (unittest.TestCase):
         tc.load_dwell_times (dt_dir)
 
         tc.load_trains (merge=False)
-        self.assertEqual (len (tc.trains), 2370)
         print (len (tc.trains))
+        self.assertEqual (len (tc.trains), 2370)
         for p in tc.trains[-1]:
             print (p)
         print (tc.trains[0].total_travel_time)
@@ -84,10 +84,13 @@ class TestTrain (unittest.TestCase):
         self.assertNotEqual (len (tc.trains), 200)
 
         tc.load_trains (merge=True)
-        self.assertEqual (len (tc.trains), 1374)  # can change based on the
         print (len (tc.trains))
+        self.assertEqual (len (tc.trains), 1374)  # can change based on the the merging criteria. this is likely of x2 the expected value
         for p in tc.trains[-1]:
             print (p)
+
+        self.assertEqual (tc.median_train.total_travel_time[0], 1166.)
+        print (tc.median_train.total_travel_time)
 
 if __name__ == '__main__':
     unittest.main ()

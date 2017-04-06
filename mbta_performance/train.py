@@ -529,9 +529,9 @@ class Train (Line):
                 travel_time = None
         else:
             # May give wrong answers if you have undefined segments...
-            dwell_times = [s.dwell_time for s in self.stops
+            dwell_times = [s.dwell_time for s in self.stops[start_station_num+1:end_station_num]
                            if s.dwell_time is not None]
-            travel_times = [t.travel_time for t in self.tracks
+            travel_times = [t.travel_time for t in self.tracks[start_station_num:end_station_num]
                             if t.travel_time is not None]
             travel_time = np.sum (dwell_times + travel_times)
 
@@ -554,7 +554,7 @@ class TrainCollection (object):
         if existing_collection is None:
             self._name = None
             self._base_train = None
-            self._average_train = None
+            self._median_train = None
             self._trains = None
             self._travel_times = None
             self._dwell_times = None
@@ -571,7 +571,7 @@ class TrainCollection (object):
 
         self._name = existing_collection.name
         self._base_train = copy.deepcopy (existing_collection.base_train)
-        self._average_train = copy.deepcopy (existing_collection.base_train)
+        self._median_train = copy.deepcopy (existing_collection.base_train)
         self._trains = copy.deepcopy (existing_collection.trains)
         self._travel_times = copy.deepcopy (existing_collection._travel_times)
         self._dwell_times = copy.deepcopy (existing_collection._dwell_times)
@@ -946,15 +946,15 @@ class TrainCollection (object):
             return iter (self.trains)
 
     @_check_base_train
-    def _update_average_train (self):
-        self._average_train = copy.deepcopy (self._base_train)
+    def _update_median_train (self):
+        self._median_train = copy.deepcopy (self._base_train)
 
-        for (i, stop) in enumerate (self._average_train._stops):
+        for (i, stop) in enumerate (self._median_train._stops):
             stop._dwell_time = np.median ([
                 t.stops[i].dwell_time for t in self.trains
                 if t.stops[i].dwell_time is not None])
 
-        for (i, track) in enumerate (self._average_train._tracks):
+        for (i, track) in enumerate (self._median_train._tracks):
             travel_times = []
             for t in self.trains:
                 if t.tracks[i].travel_time is not None:
@@ -966,16 +966,12 @@ class TrainCollection (object):
                          t.stops[i].departure_time).total_seconds ())
             track._travel_time = np.median ([travel_times])
 
-        self._average_train._start = self._average_train._stops[0]
-        self._average_train._current = self._average_train._start
-        self._average_train._end = self._average_train._stops[-1]
+        self._median_train._start = self._median_train._stops[0]
+        self._median_train._current = self._median_train._start
+        self._median_train._end = self._median_train._stops[-1]
 
-        self._average_train._total_travel_time = np.sum (
-            [s.dwell_time for s in self._average_train.stops[1:-1]] +
-            [t.travel_time for t in self._average_train.tracks
-             if np.isfinite (t.travel_time)]
-        )
-
+        self._median_train._total_travel_time = \
+            self._median_train._calc_total_travel_time (use_abs_time=False)
     @property
     def name (self):
         """ `TrainCollection` name.
@@ -997,16 +993,16 @@ class TrainCollection (object):
         return self._base_train
 
     @property
-    def average_train (self):
+    def median_train (self):
         """ `TrainCollection` base train.
 
         Returns:
             `Train`: base train of the line
         """
 
-        if self._average_train is None:
-            self._update_average_train ()
-        return self._average_train
+        if self._median_train is None:
+            self._update_median_train ()
+        return self._median_train
 
     @property
     def trains (self):
