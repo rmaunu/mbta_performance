@@ -74,7 +74,7 @@ def get_next_train (train, travel_times, dwell_times):
     # Get the first stop
     starting_stop = None
     for piece in train:
-        if type (piece) is TrainTrack:
+        if isinstance (piece, TrainTrack):
             continue
         if piece.stop_id == start_stop_num:
             starting_stop = piece
@@ -86,7 +86,7 @@ def get_next_train (train, travel_times, dwell_times):
     next_piece = next (starting_stop)
     while next_piece is not None:
         found_it = False
-        if type (next_piece) is TrainTrack:
+        if isinstance (next_piece, TrainTrack):
             dep_t = prev_piece.departure_time
 
             tt_deque = travel_times[
@@ -398,7 +398,7 @@ class Train (Line):
             stop._prev_track = track
             self._tracks.append (track)
 
-    def plot_train (self, ax, station_ref_dict):
+    def plot_train (self, ax, station_ref_dict, **kwargs):
         """ Function to plot the travel time of a train.
 
         Args:
@@ -414,7 +414,7 @@ class Train (Line):
         start_time = self.start.departure_time
         for piece in self:
             try:
-                if type (piece) is TrainStop:
+                if isinstance (piece, TrainStop):
                     if piece != self.start:
                         y_coords.append (
                             (piece.arrival_time - start_time).total_seconds () / 60.)
@@ -433,7 +433,7 @@ class Train (Line):
             except:
                 pass
 
-        ax.plot (x_coords, y_coords, color='r', alpha=0.1)
+        ax.plot (x_coords, y_coords, **kwargs)
         ax.grid (ls='-', color='grey', alpha=0.3)
 
     def __getitem__ (self, key):
@@ -447,12 +447,12 @@ class Train (Line):
         """
 
         stops = copy.deepcopy (self.stops[key])
-        if type (stops) is TrainStop:
+        if isinstance (stops, TrainStop):
             stops = [stops]
         stops[0]._prev_track = None
         stops[-1]._next_track = None
 
-        if type (key) is slice:
+        if isinstance (key, slice):
             try:
                 t_key = slice (key.start, key.stop-1)
             except:
@@ -726,7 +726,7 @@ class TrainCollection (object):
                 likely the same train
         """
 
-        if type (num_trains) is not int and num_trains is not None:
+        if not isinstance (num_trains, int) and num_trains is not None:
             raise TypeError ("num_trains must be an int. Please check inputs ...")
 
         if self._travel_times is None or not self._travel_times:
@@ -833,7 +833,7 @@ class TrainCollection (object):
         train1._end = train2._end
         piece2 = train2.start
         for piece1 in train1:
-            if type (piece1) is TrainTrack:
+            if isinstance (piece1, TrainTrack):
                 continue
             elif piece1.stop_name == piece2.stop_name:
                 while True:
@@ -863,7 +863,7 @@ class TrainCollection (object):
             `Train`: merged train if first leg is found, None otherwise
         """
 
-        if self.base_train.station_dict[train.start.station_name] <= 1:
+        if self.base_train.station_dict[train.start.station_name] == 0:
             return None
         else:
             for t in self._trains[::-1]:
@@ -891,7 +891,7 @@ class TrainCollection (object):
                 # Otherwise, unlikely to be the same train. If the train is too
                 # far in the past, we have not found a candidate train, so
                 # return None
-                if station_num_diff == 1 and time_diff >= 10. and time_diff < 180.:
+                if station_num_diff == 1 and time_diff >= 0. and time_diff < 180.:
                     t = self._merge_trains (t, train)
                     # t._end = train.end
                     return t
@@ -906,7 +906,7 @@ class TrainCollection (object):
                 elif time_diff / station_num_diff > 1000:
                     return None
 
-    def plot_trains (self, ax, station_ref_dict):
+    def plot_trains (self, ax, station_ref_dict, **kwargs):
         """ Function to plot the travel times of all `Train`s in the collection.
 
         Args:
@@ -924,7 +924,7 @@ class TrainCollection (object):
             if station_ref_dict[t.start.station_name] > 0 and \
                     station_ref_dict[t.start.station_name] < (len (t.stops) - 1):
                 continue
-            t.plot_train (ax, station_ref_dict)
+            t.plot_train (ax, station_ref_dict, **kwargs)
 
     def __getitem__ (self, key):
         if self.trains is None:
@@ -933,7 +933,7 @@ class TrainCollection (object):
         out_tc = TrainCollection (self)
 
         trains = self.trains[key]
-        if type (trains) is Train:
+        if isinstance (trains, Train):
             trains = [trains]
         out_tc._trains = copy.deepcopy (trains)
 
@@ -946,7 +946,14 @@ class TrainCollection (object):
             return iter (self.trains)
 
     @_check_base_train
-    def _update_median_train (self):
+    def update_median_train (self):
+        """ Method to update the median train if different trains have been
+        loaded.
+        """
+
+        if self.trains is None:
+            raise LookupError ("No trains are loaded. Please do this first ...")
+
         self._median_train = copy.deepcopy (self._base_train)
 
         for (i, stop) in enumerate (self._median_train._stops):
@@ -1001,7 +1008,7 @@ class TrainCollection (object):
         """
 
         if self._median_train is None:
-            self._update_median_train ()
+            self.update_median_train ()
         return self._median_train
 
     @property

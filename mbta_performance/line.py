@@ -374,12 +374,12 @@ class Line (object):
             be output per-track.
         """
 
-        if type (start_time) is not datetime:
+        if not isinstance (start_time, datetime):
             raise TypeError ("Input time must be a `datetime` ...")
         else:
             start_time = localize_eastern_dt (start_time)
 
-        if type (end_time) is not datetime:
+        if not isinstance (end_time, datetime):
             raise TypeError ("Input time must be a `datetime` ...")
         else:
             end_time = localize_eastern_dt (end_time)
@@ -440,12 +440,12 @@ class Line (object):
             be output per-stop.
         """
 
-        if type (start_time) is not datetime:
+        if not isinstance (start_time, datetime):
             raise TypeError ("Input time must be a `datetime` ...")
         else:
             start_time = localize_eastern_dt (start_time)
 
-        if type (end_time) is not datetime:
+        if not isinstance (end_time, datetime):
             raise TypeError ("Input time must be a `datetime` ...")
         else:
             end_time = localize_eastern_dt (end_time)
@@ -499,12 +499,12 @@ class Line (object):
             raise ValueError ("The line's stops have not been set. Please use `Line.load` ...")
 
         stops = copy.deepcopy (self.stops[key])
-        if type (stops) is Stop:
+        if isinstance (stops, Stop):
             stops = [stops]
         stops[0]._prev_track = None
         stops[-1]._next_track = None
 
-        if type (key) is slice:
+        if isinstance (key, slice):
             try:
                 t_key = slice (key.start, key.stop-1)
             except:

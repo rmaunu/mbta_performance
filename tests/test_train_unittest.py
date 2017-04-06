@@ -64,6 +64,11 @@ class TestTrain (unittest.TestCase):
         except LookupError:
             print ("Caught premature load trains")
 
+        try:
+            tc.median_train.total_travel_time
+        except LookupError:
+            print ("Caught premature calculate median train")
+
         tc.load_travel_times (tt_dir)
         tc.load_dwell_times (dt_dir)
 
@@ -85,11 +90,13 @@ class TestTrain (unittest.TestCase):
 
         tc.load_trains (merge=True)
         print (len (tc.trains))
-        self.assertEqual (len (tc.trains), 1374)  # can change based on the the merging criteria. this is likely of x2 the expected value
+        self.assertEqual (len (tc.trains), 1280)  # can change based on the the merging criteria. this is likely of x2 the expected value
         for p in tc.trains[-1]:
             print (p)
 
-        self.assertEqual (tc.median_train.total_travel_time[0], 1166.)
+        self.assertEqual (tc.median_train.total_travel_time[0], 1165.)
+        self.assertEqual (tc.median_train.total_travel_time[1], (u'Wonderland', 0))
+        self.assertEqual (tc.median_train.total_travel_time[2], (u'Bowdoin', 11))
         print (tc.median_train.total_travel_time)
 
 if __name__ == '__main__':

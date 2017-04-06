@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from pytz import timezone
 from glob import glob
+from palettable import colorbrewer
+
+colors = colorbrewer.qualitative.Set1_7.mpl_colors
 
 from mbta_performance import cache
 from mbta_performance import line
@@ -30,8 +33,8 @@ if __name__ == '__main__':
     # for name in line_names[4:]:
     # for name in line_names[:1]:
     for l in lines:
-        if 'Blue' in l.value:
-            continue
+        # if not 'Blue' in l.value:
+            # continue
         fig = plt.figure ()
         ax = fig.add_subplot (111)
         fig.subplots_adjust(bottom=0.4)
@@ -53,7 +56,9 @@ if __name__ == '__main__':
 
             if station_dict is None:
                 station_dict = tc.base_train.station_dict
-            tc.plot_trains (ax, station_dict)
+
+            c = colors[int (d)]
+            tc.plot_trains (ax, station_dict, color=c, alpha=0.1)
             cache.save (tc, '{0}/{1}_{2}.pickle'.format (
                 ana_dir, tc.name, tc.base_train.direction_name))
 
