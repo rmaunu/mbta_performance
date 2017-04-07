@@ -22,8 +22,7 @@ responsiveness, delay magnitude prediction based on weather, etc.).
 To start an analysis, simply `import mbta_performance`, and load a line:
 ```python
 tc = mbta_performance.train.TrainCollection ()
-tc.load_base_train (<lines data directory location>,
-                    mbta_performance.train.lines.<line>)
+tc.load_base_train (mbta_performance.train.lines.<line>)
 ```
 The train direction can also be set by the `direction_id` tag ("0" or "1").
 Using `datetime` objects, train performance data can be downloaded from the MBTA
