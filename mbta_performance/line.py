@@ -291,7 +291,7 @@ class Line (object):
             self._end = self._stops[-1]
         self._current = self._start
 
-    def load (self, path, line_name, direction_id="0"):
+    def load (self, line_name, direction_id="0"):
         """ Function to load MBTA route JSON to `Line`.
 
         Args:
@@ -305,7 +305,9 @@ class Line (object):
 
         self._name = line_name.value
 
-        filepath = '{0}/{1}.json'.format (path, self.name)
+        file_dir = os.path.dirname (os.path.realpath (__file__))
+        lines_dir = '{0}/data/lines'.format (file_dir)
+        filepath = '{0}/{1}.json'.format (lines_dir, self.name)
         if not os.path.exists (filepath):
             raise ValueError ("Line file not found. Check path provide ...")
 

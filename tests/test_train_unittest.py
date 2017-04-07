@@ -19,15 +19,12 @@ class TestTrain (unittest.TestCase):
         pass
 
     def testBasicTrain (self):
-        curr_dir = os.path.dirname (os.path.realpath (__file__))
-        lines_dir = '{0}/test_data/lines'.format (curr_dir)
-
         t = train.Train ()
         for p in t:
             print (p)
         self.assertTrue (t.total_travel_time is None)
 
-        t.load (lines_dir, train.lines.blue)
+        t.load (train.lines.blue)
         for p in t:
             print (p)
 
@@ -40,14 +37,12 @@ class TestTrain (unittest.TestCase):
 
     def testTrainCollection (self):
         curr_dir = os.path.dirname (os.path.realpath (__file__))
-        lines_dir = '{0}/test_data/lines'.format (curr_dir)
-        tt_dir = '{0}/test_data/travel_times'.format (curr_dir)
-        dt_dir = '{0}/test_data/dwell_times'.format (curr_dir)
+        times_dir = '{0}/test_data/time_data'.format (curr_dir)
 
         tc = train.TrainCollection ()
         self.assertTrue (tc.base_train is None)
 
-        tc.load_base_train (lines_dir, train.lines.blue)
+        tc.load_base_train (train.lines.blue)
         for p in tc.base_train:
             print (p)
         for t in tc:
@@ -69,8 +64,13 @@ class TestTrain (unittest.TestCase):
         except LookupError:
             print ("Caught premature calculate median train")
 
-        tc.load_travel_times (tt_dir)
-        tc.load_dwell_times (dt_dir)
+        try:
+            tc.load_times ()
+        except LookupError:
+            print ("Caught premature load times")
+
+        tc.set_data_path (times_dir)
+        tc.load_times ()
 
         tc.load_trains (merge=False)
         print (len (tc.trains))

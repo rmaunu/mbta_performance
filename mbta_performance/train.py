@@ -558,6 +558,7 @@ class TrainCollection (object):
             self._trains = None
             self._travel_times = None
             self._dwell_times = None
+            self._data_path = None
         else:
             self.load_existing (existing_collection)
 
@@ -570,13 +571,14 @@ class TrainCollection (object):
         """
 
         self._name = existing_collection.name
+        self._data_path = existing_collection._data_path
         self._base_train = copy.deepcopy (existing_collection.base_train)
         self._median_train = copy.deepcopy (existing_collection.base_train)
         self._trains = copy.deepcopy (existing_collection.trains)
         self._travel_times = copy.deepcopy (existing_collection._travel_times)
         self._dwell_times = copy.deepcopy (existing_collection._dwell_times)
 
-    def load_base_train (self, path, line_name, direction_id="0"):
+    def load_base_train (self, line_name, direction_id="0"):
         """ Function to load the base route for the `Train` (see `Train.load`).
 
         Args:
@@ -586,8 +588,18 @@ class TrainCollection (object):
         """
 
         self._name = line_name.value
+
         self._base_train = Train ()
-        self._base_train.load (path, line_name, direction_id=direction_id)
+        self._base_train.load (line_name, direction_id=direction_id)
+
+    def set_data_path (self, path):
+        """ Function to set path where MBTA train data will downloaded to.
+
+        Args:
+            path (str): path to data directory
+        """
+
+        self._data_path = path
 
     def _check_base_train (function):
         """ Decorator of class functions to verify the base train has been set. """
@@ -599,15 +611,25 @@ class TrainCollection (object):
             function (self, *args, **kwargs)
         return checker_helper
 
+    def _check_data_path (function):
+        """ Decorator of class functions to verify the data path has been set. """
+
+        def checker_helper (self, *args, **kwargs):
+            if self._data_path is None:
+                raise LookupError ("Data path has not yet been set. Please use `TrainCollection.set_data_path`")
+            function (self, *args, **kwargs)
+        return checker_helper
+
     @_check_base_train
-    def get_traveltimes (self, path, start_time, end_time, dry=False):
+    @_check_data_path
+    def get_times (self, start_time, end_time, dry=False):
         """ Function to download MBTA travel time JSONs for a specified time
-        period. A wrapper of `Train.get_traveltimes`.
+        period. A wrapper of `Train.get_traveltimes` and `Train.get_dwelltimes`.
 
         Args:
-            path (str): directory to save travel times to
             start_time (datetime): start time of travel times
             end_time (datetime): end time of travel times
+            path (str, optional): directory to save travel times to
             dry (bool, optional): if True, do not write out data to path
 
         Returns:
@@ -619,32 +641,20 @@ class TrainCollection (object):
             be output per-track.
         """
 
-        self._base_train.get_traveltimes (path, start_time, end_time, dry=dry)
+        self._base_train.get_traveltimes (self._times_path, start_time, end_time, dry=dry)
+        self._base_train.get_dwelltimes (self._times_path, start_time, end_time, dry=dry)
 
     @_check_base_train
-    def get_dwelltimes (self, path, start_time, end_time, dry=False):
-        """ Function to download MBTA train dwell time JSONs for a specified time
-        period. A wrapper of `Train.get_dwelltimes`.
+    @_check_data_path
+    def load_times (self):
+        """ Function to load the times of the train line. """
 
-        Args:
-            path (str): directory to save dwell times to
-            start_time (datetime): start time of travel times
-            end_time (datetime): end time of travel times
-            dry (bool, optional): if True, do not write out data to path
-
-        Returns:
-            Files of MBTA JSON dwell times for each `Track` in the `Line`. Files
-            will be output to a subdirectory with name "<`Line.name`>/", and
-            files will have names of the form:
-                dwelltimes_<`Line.name`>_<`Line.direction_id`>_<Stop ID>_<Start Time>_<End Time>.json
-            The MBTA API limits queries to 7 day windows, so multiple files may
-            be output per-stop.
-        """
-
-        self._base_train.get_dwelltimes (path, start_time, end_time, dry=dry)
+        self._load_travel_times ()
+        self._load_dwell_times ()
 
     @_check_base_train
-    def load_travel_times (self, path):
+    @_check_data_path
+    def _load_travel_times (self):
         """ Function to load the travel times of the train line.
 
         Args:
@@ -653,7 +663,7 @@ class TrainCollection (object):
 
         self._travel_times = {}
 
-        traveltimes_dir = '{0}/{1}'.format (path, self.name)
+        traveltimes_dir = '{0}/{1}'.format (self._data_path, self.name)
 
         tt_files = sorted (glob ('{0}/traveltimes_{1}_{2}*'.format (
             traveltimes_dir, self.base_train.name, self.base_train.direction_id)))
@@ -681,14 +691,15 @@ class TrainCollection (object):
                 self._travel_times[stops] = tt_json['travel_times']
 
     @_check_base_train
-    def load_dwell_times (self, path):
+    @_check_data_path
+    def _load_dwell_times (self):
         """ Function to load the dwell times of the train line.
 
         Args:
             path (str): directory used in `get_dwelltimes` call
         """
 
-        dwelltimes_dir = '{0}/{1}'.format (path, self.name)
+        dwelltimes_dir = '{0}/{1}'.format (self._data_path, self.name)
 
         dt_files = sorted (glob ('{0}/dwelltimes_{1}_{2}*'.format (
             dwelltimes_dir, self.base_train.name, self.base_train.direction_id)))

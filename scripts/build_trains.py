@@ -24,9 +24,7 @@ from mbta_performance.utils import ensure_dir, lines
 
 if __name__ == '__main__':
     curr_dir = os.path.dirname (os.path.realpath (__file__))
-    lines_dir = '{0}/data/lines'.format (os.path.dirname (curr_dir))
-    traveltimes_dir = '{0}/data/traveltimes'.format (os.path.dirname (curr_dir))
-    dwelltimes_dir = '{0}/data/dwelltimes'.format (os.path.dirname (curr_dir))
+    times_dir = '{0}/data/times'.format (os.path.dirname (curr_dir))
     ana_dir = ensure_dir ('{0}/data/ana'.format (os.path.dirname (curr_dir)))
     plot_dir = ensure_dir ('{0}/plots'.format (os.path.dirname (curr_dir)))
 
@@ -42,14 +40,14 @@ if __name__ == '__main__':
 
         for d in ("0", "1"):
             tc = train.TrainCollection ()
-            tc.load_base_train (lines_dir, l, direction_id=d)
+            tc.load_base_train (l, direction_id=d)
 
             print (tc.name, tc.base_train.direction_name)
             for p in tc.base_train:
                 print (p)
 
-            tc.load_travel_times (traveltimes_dir)
-            tc.load_dwell_times (dwelltimes_dir)
+            tc.set_data_path (times_dir)
+            tc.load_times ()
 
             tc.load_trains (num_trains=10000)
             # tc.load_trains (num_trains=1000)
